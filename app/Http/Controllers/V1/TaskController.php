@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\V1\Task;
+use App\Models\V1\Tags;
 
 class TaskController extends Controller
 {
@@ -15,7 +16,10 @@ class TaskController extends Controller
      */
     public function index()
     {
-        return Task::all();
+        // TODO
+        // remove file_url
+        // add tags
+        return Task::with('tags')->get();
     }
 
     /**
@@ -26,7 +30,13 @@ class TaskController extends Controller
      */
     public function store(Request $request)
     {
-        return 'created';
+        $request->validate([
+            'name' => 'required',
+            'status' => 'required',
+            'file_url'=> 'required'
+        ]);
+
+        return Task::create($request->all());
     }
 
 
@@ -39,8 +49,15 @@ class TaskController extends Controller
      */
     public function update(Request $request, $id)
     {
-        return Task::find($id);
-        // return 'updated';
+        $task = Task::findOrFail($id);
+        $request->validate([
+            'name' => 'required',
+            'status' => 'required',
+            'file_url' => 'required'
+        ]);
+
+        $task->update($request->all());
+        return $task;
     }
 
     /**
@@ -52,8 +69,14 @@ class TaskController extends Controller
      */
     public function update_status(Request $request, $id)
     {
-        return Task::find($id);
-        // return 'status updated';
+        // valid order
+        $task = Task::findOrFail($id);
+        $request->validate([
+            'status' => 'required',
+        ]);
+
+        $task->update($request->all());
+        return Response()->noContent();
     }
 
     /**
@@ -76,6 +99,14 @@ class TaskController extends Controller
      */
     public function store_tag(Request $request, $id)
     {
-        return Task::find($id);
+        // check exist tag to task
+        // return Task::find($id);
+        $request->validate([
+            'tag_name' => 'required',
+            'task_id' => 'required'
+        ]);
+
+        Tags::create($request->all());
+        return Response()->noContent();
     }
 }

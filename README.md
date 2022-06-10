@@ -3,6 +3,8 @@ Simple API Rest Laravel with versioning.
 
 ## Requirements
 PHP 8.0 or newest
+Composer
+Mysql Server
 
 ## Install
 ### Clone git repository
@@ -18,6 +20,10 @@ cd api
 ### Install dependencies
 ```
 composer update
+```
+### Create a new key config
+```
+php artisan key:generate
 ```
 
 ### Create a database
@@ -41,4 +47,12 @@ php artisan migrate:fresh --seed
 ### Run local project
 ```
 php artisan serve
+```
+
+## Tests
+Test by PHPUnit
+
+Run in terminal
+```
+composer test
 ```

@@ -17,8 +17,8 @@ class TagsFactory extends Factory
     public function definition()
     {
         return [
-            'tag_name'=>$this->faker->realText(20,1),
-            'task_id'=>$this->faker->randomElement(\App\Models\V1\Task::pluck('id')->toArray()),
+            'tag_name' => $this->faker->randomElement(['warning', 'todo', 'bug', 'urgent']),
+            'task_id' => $this->faker->randomElement(\App\Models\V1\Task::pluck('id')->toArray()),
         ];
     }
 }
