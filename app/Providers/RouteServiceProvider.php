@@ -29,6 +29,9 @@ class RouteServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
 
         $this->routes(function () {
+            // versioning api
+            $this->mapApiRoutes();
+
             Route::middleware('api')
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
@@ -47,6 +50,24 @@ class RouteServiceProvider extends ServiceProvider
     {
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+    }
+
+    /**
+     * Define path to API Controller
+     * 
+     * @var string
+     */
+    protected $apiNamespace = 'App\Http\Controllers';
+
+    protected function mapApiRoutes()
+    {
+        Route::group([
+            'middleware' => ['api', 'api_version:v1'],
+            'namespace'  => "{$this->apiNamespace}\V1",
+            'prefix'     => 'api/v1',
+        ], function ($router) {
+            require base_path('routes/api_v1.php');
         });
     }
 }
