@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('description')->nullable();
-            $table->enum('status', ['backlog', 'in_progress', 'waiting_customer_approval', 'approved'])->default('backlog');
+            $table->enum('status', ['BACKLOG', 'IN_PROGRESS', 'WAITING_CUSTOMER_APPROVAL', 'APPROVED'])->default('backlog');
             $table->string('file_url');
             $table->timestamps();
         });

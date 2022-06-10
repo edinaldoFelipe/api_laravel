@@ -2,13 +2,31 @@
 
 namespace App\Http\Controllers\V1;
 
+use App\Exceptions\APIException;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\V1\Task;
 use App\Models\V1\Tags;
+use Exception;
+use Throwable;
 
 class TaskController extends Controller
 {
+    const ERROR_MESSAGE_PT_BR = [
+            'name' => 'O nome da tarefa é obrigatório',
+            'status' => 'O status da tarefa é obrigatório',
+            'file_url' => 'A url da tarefa é obrigatória',
+            'file_url_invalid' => 'Url inválida',
+            'not_found' => 'Nenhuma tarefa encontrada',
+            'status_invalid' => 'Status inválido'
+        ],
+        STATUS_ORDER = [
+            'BACKLOG',
+            'IN_PROGRESS',
+            'WAITING_CUSTOMER_APPROVAL',
+            'APPROVED'
+        ];
+
     /**
      * Display a listing of the resource.
      *
@@ -16,10 +34,14 @@ class TaskController extends Controller
      */
     public function index()
     {
-        // TODO
-        // remove file_url
-        // add tags
-        return Task::with('tags')->get();
+        $tasks = Task::with('tags')
+            ->get()
+            ->makeHidden('file_url');
+
+        if ($tasks->isEmpty())
+            throw new APIException(new Exception(self::ERROR_MESSAGE_PT_BR['not_found']), 204);
+        else
+            return $tasks;
     }
 
     /**
@@ -30,13 +52,20 @@ class TaskController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required',
-            'status' => 'required',
-            'file_url'=> 'required'
-        ]);
+        try {
+            $request->validate([
+                'name' => 'required',
+                'file_url' => 'required|url'
+            ], [
+                'name.required' => self::ERROR_MESSAGE_PT_BR['name'],
+                'file_url.required' => self::ERROR_MESSAGE_PT_BR['file_url'],
+                'file_url.url' => self::ERROR_MESSAGE_PT_BR['file_url_invalid'],
+            ]);
 
-        return Task::create($request->all());
+            return Task::create($request->all());
+        } catch (Throwable $e) {
+            throw new APIException($e, 400);
+        }
     }
 
 
@@ -49,15 +78,33 @@ class TaskController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $task = Task::findOrFail($id);
-        $request->validate([
-            'name' => 'required',
-            'status' => 'required',
-            'file_url' => 'required'
-        ]);
+        try {
+            // get task
+            $task = Task::findOrFail($id);
 
-        $task->update($request->all());
-        return $task;
+            // validation
+            $request->validate([
+                'name' => 'required',
+                'status' => 'required|in:' . implode(',', self::STATUS_ORDER),
+                'file_url' => 'required|url'
+            ], [
+                'name.required' => self::ERROR_MESSAGE_PT_BR['name'],
+                'status.required' => self::ERROR_MESSAGE_PT_BR['status'],
+                'status.in' => self::ERROR_MESSAGE_PT_BR['status_invalid'],
+                'file_url.required' => self::ERROR_MESSAGE_PT_BR['file_url'],
+                'file_url.url' => self::ERROR_MESSAGE_PT_BR['file_url_invalid'],
+            ]);
+
+            // check valid status order
+            $this->checkOrderStatus($task->status, $request->input('status'));
+
+            // save
+            $task->update($request->all());
+
+            return Response()->noContent();
+        } catch (Throwable $e) {
+            throw new APIException($e, 400);
+        }
     }
 
     /**
@@ -69,14 +116,46 @@ class TaskController extends Controller
      */
     public function update_status(Request $request, $id)
     {
-        // valid order
-        $task = Task::findOrFail($id);
-        $request->validate([
-            'status' => 'required',
-        ]);
+        try {
+            // get task
+            $task = Task::findOrFail($id);
 
-        $task->update($request->all());
-        return Response()->noContent();
+            // validation
+            $request->validate([
+                'status' => 'required|in:' . implode(',', self::STATUS_ORDER),
+            ], [
+                'status.required' => self::ERROR_MESSAGE_PT_BR['status'],
+                'status.in' => self::ERROR_MESSAGE_PT_BR['status_invalid'],
+            ]);
+
+            // check valid status order
+            $this->checkOrderStatus($task->status, $request->input('status'));
+
+            // save
+            $task->update($request->all());
+            
+            return Response()->noContent();
+        } catch (Throwable $e) {
+            throw new APIException($e, 400);
+        }
+    }
+
+    /**
+     * 
+     * @return void
+     */
+    private function checkOrderStatus(string $currentStatus, string $newStatus): void
+    {
+        $currentStatusLevel = array_search($currentStatus, self::STATUS_ORDER);
+        $newStatusLevel = array_search($newStatus, self::STATUS_ORDER);
+
+        // not allowed regress
+        if ($newStatusLevel < $currentStatusLevel)
+            throw new Exception("O status da tarefa não pode ser regredido");
+
+        // not allowed jump step
+        if ($newStatusLevel > $currentStatusLevel + 1)
+            throw new Exception("O status da tarefa não pode ser alterado. Ainda existem pendências");
     }
 
     /**
@@ -88,7 +167,11 @@ class TaskController extends Controller
      */
     public function show_file_url(Request $request, $id)
     {
-        return Task::find($id)->file_url;
+        try {
+            return Task::findOrFail($id)->file_url;
+        } catch (Throwable $e) {
+            throw new APIException($e, 400);
+        }
     }
 
     /**
@@ -99,14 +182,32 @@ class TaskController extends Controller
      */
     public function store_tag(Request $request, $id)
     {
-        // check exist tag to task
-        // return Task::find($id);
-        $request->validate([
-            'tag_name' => 'required',
-            'task_id' => 'required'
-        ]);
+        try {
+            // get tags registreds
+            $tags = Task::with('tags')
+                ->where('id', $id)
+                ->get()
+                ->first()
+                ->tags
+                ->toArray();
 
-        Tags::create($request->all());
-        return Response()->noContent();
+            // validation
+            $request->validate([
+                'tag_name' => 'required',
+            ], [
+                'tag_name.required' => 'O nome da tag é obrigatório',
+            ]);
+
+            // check if exist tag_name to this task
+            if (array_search($request->input('tag_name'), array_column($tags, 'tag_name')) > -1)
+                throw new Exception('Essa tag já existe para esta tarefa');
+
+            // save
+            Tags::create(array_merge($request->all(), ['task_id' => $id]));
+
+            return Response()->noContent();
+        } catch (Throwable $e) {
+            throw new APIException($e, 400);
+        }
     }
 }

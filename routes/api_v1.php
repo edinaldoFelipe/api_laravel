@@ -1,7 +1,9 @@
 <?php
 
+use App\Exceptions\APIException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /*
 |--------------------------------------------------------------------------
@@ -17,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 // TODO
 // Middleware Authentication
 // Error Handling
+
 Route::controller(App\Http\Controllers\V1\TaskController::class)
 ->group(function () {
     Route::get('/tasks', 'index');
