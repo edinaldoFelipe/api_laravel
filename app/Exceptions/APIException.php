@@ -14,8 +14,8 @@ class APIException extends Exception
     {
         parent::__construct();
         $this->error = $error;
-        $this->message = $this->getValidMessage();
         $this->code = $this->getValidCode($code);
+        $this->message = $this->getValidMessage();
     }
 
     private function getValidMessage(): string
@@ -40,13 +40,13 @@ class APIException extends Exception
     private function getValidCode(int $code): int
     {
         // from constructor
-        if($code)
+        if ($code)
             return $code;
 
         // from system
         if ($this->getCode() != 0)
             return $this->getCode();
-        
+
         // default
         return 500;
     }

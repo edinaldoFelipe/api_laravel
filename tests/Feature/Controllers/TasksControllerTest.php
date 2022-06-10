@@ -163,7 +163,7 @@ class TasksControllerTest extends TestCase
 
         // data to new tag
         $payload = [
-            'tag_name' => $this->faker->randomElement(['warning', 'todo', 'bug', 'urgent']),
+            'tag_name' => $this->faker->randomElement(['WARNING', 'TODO', 'BUG', 'URGENT']),
             'task_id' => $task->id,
         ];
 
@@ -209,4 +209,6 @@ class TasksControllerTest extends TestCase
     | FAILS
     |-------------------------------------------
     */
+
+    
 }

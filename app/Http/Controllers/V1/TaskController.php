@@ -133,7 +133,7 @@ class TaskController extends Controller
 
             // save
             $task->update($request->all());
-            
+
             return Response()->noContent();
         } catch (Throwable $e) {
             throw new APIException($e, 400);
@@ -168,9 +168,14 @@ class TaskController extends Controller
     public function show_file_url(Request $request, $id)
     {
         try {
-            return Task::findOrFail($id)->file_url;
+            $task = Task::findOrFail($id);
+
+            if ($task->status !== 'APPROVED')
+                throw new Exception("O link só estará disponível após a aprovação da tarefa", 403);
+
+            return json_encode(['file_url' => $task->file_url]);
         } catch (Throwable $e) {
-            throw new APIException($e, 400);
+            throw new APIException($e, $e->getCode());
         }
     }
 

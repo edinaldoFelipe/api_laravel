@@ -1,9 +1,6 @@
 <?php
 
-use App\Exceptions\APIException;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,10 +12,6 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-
-// TODO
-// Middleware Authentication
-// Error Handling
 
 Route::controller(App\Http\Controllers\V1\TaskController::class)
 ->group(function () {
