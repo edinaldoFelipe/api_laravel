@@ -2,17 +2,17 @@
 
 namespace Tests\Feature\Controllers;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use Illuminate\Http\Response;
 use App\Models\V1\Task;
+use App\Models\V1\Tags;
 use Faker\Generator;
 use Faker\Factory;
-
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class TasksControllerTest extends TestCase
 {
+    use RefreshDatabase;
     private Generator $faker;
 
     /*
@@ -29,6 +29,26 @@ class TasksControllerTest extends TestCase
      */
     public function testIndexReturnsDataInValidFormat()
     {
+        $this->faker = Factory::create();
+
+        // create task
+        $task = Task::create(
+            [
+                'name' => $this->faker->realText(30, 1),
+                'description' => $this->faker->text,
+                'status' => 'BACKLOG',
+                'file_url' => $this->faker->url,
+            ]
+        );
+
+        //create tag
+        Tags::create(
+            [
+                'tag_name' => 'WARNING',
+                'task_id' => $task->id,
+            ]
+        );
+
         $this->json('get', 'api/v1/tasks')
             ->assertStatus(Response::HTTP_OK)
             ->assertJsonStructure(
@@ -38,7 +58,6 @@ class TasksControllerTest extends TestCase
                         'name',
                         'description',
                         'status',
-                        'file_url',
                         'tags',
                         'created_at',
                         'updated_at',
@@ -104,23 +123,12 @@ class TasksControllerTest extends TestCase
         $payload = [
             'name' => 'New Name',
             'description' => null,
-            'status' => 'BACKLOG',
+            'status' => 'IN_PROGRESS',
             'file_url' => 'https://www.mandarin.com.br/',
         ];
 
         $this->json('put', "api/v1/tasks/$task->id", $payload)
-            ->assertStatus(Response::HTTP_OK)
-            ->assertExactJson(
-                [
-                    'id' => $task->id,
-                    'name' => $payload['name'],
-                    'description' => $payload['description'],
-                    'status' => $payload['status'],
-                    'file_url' =>  $payload['file_url'],
-                    'created_at' => $task->created_at,
-                    'updated_at' => $task->created_at,
-                ]
-            );
+            ->assertStatus(Response::HTTP_NO_CONTENT);
     }
 
     /**
@@ -137,7 +145,7 @@ class TasksControllerTest extends TestCase
             [
                 'name' => $this->faker->realText(30, 1),
                 'description' => $this->faker->text,
-                'status' => 'approved',
+                'status' => 'APPROVED',
                 'file_url' => $this->faker->url,
             ]
         );
@@ -145,7 +153,11 @@ class TasksControllerTest extends TestCase
         // get only file_url
         $this->get("api/v1/tasks/$task->id/file_url")
             ->assertStatus(Response::HTTP_OK)
-            ->assertSee($task['file_url']);
+            ->assertJsonStructure(
+                [
+                    'file_url',
+                ]
+            );
     }
 
     /**
@@ -158,8 +170,15 @@ class TasksControllerTest extends TestCase
     {
         $this->faker = Factory::create();
 
-        // get random task
-        $task = Task::inRandomOrder()->first();
+        // create new task
+        $task = Task::create(
+            [
+                'name' => $this->faker->realText(30, 1),
+                'description' => $this->faker->text,
+                'status' => 'BACKLOG',
+                'file_url' => $this->faker->url,
+            ]
+        );
 
         // data to new tag
         $payload = [
@@ -179,7 +198,7 @@ class TasksControllerTest extends TestCase
      *
      * @return void
      */
-    public function testTagStautsIsUpdatedSuccessfully()
+    public function testTagStatusIsUpdatedSuccessfully()
     {
         $this->faker = Factory::create();
 
@@ -210,5 +229,177 @@ class TasksControllerTest extends TestCase
     |-------------------------------------------
     */
 
-    
+    /**
+     * Test error post route api
+     * Dont send status
+     *
+     * @return void
+     */
+    public function testTaskIsCreatedErrorNullField()
+    {
+        $this->faker = Factory::create();
+
+        $payload = [
+            'name' => $this->faker->realText(30, 1),
+            'description' => $this->faker->text,
+            'status' => null,
+            'file_url' => $this->faker->url,
+        ];
+
+        $this->json('post', 'api/v1/tasks', $payload)
+            ->assertStatus(Response::HTTP_BAD_REQUEST)
+            ->assertJsonStructure(
+                [
+                    'error',
+                    'message',
+                ]
+            );
+    }
+
+    /**
+     * Test error put route api
+     * Send Name null
+     *
+     * @return void
+     */
+    public function testTaskIsUpdateErrorNameNull()
+    {
+        $this->faker = Factory::create();
+
+        // create new Task
+        $task = Task::create(
+            [
+                'name' => $this->faker->realText(30, 1),
+                'description' => $this->faker->text,
+                'status' => 'BACKLOG',
+                'file_url' => $this->faker->url,
+            ]
+        );
+
+        // data to update
+        $payload = [
+            'name' => null,
+            'status' => 'BACKLOG',
+            'file_url' => 'https://www.mandarin.com.br/',
+        ];
+
+        $this->json('put', "api/v1/tasks/$task->id", $payload)
+            ->assertStatus(Response::HTTP_BAD_REQUEST)
+            ->assertJsonStructure(
+                [
+                    'error',
+                    'message',
+                ]
+            );
+    }
+
+    /**
+     * Test error patch route api
+     * Send status wrong order
+     *
+     * @return void
+     */
+    public function testTagStatusIsUpdatedErrorJumpStep()
+    {
+        $this->faker = Factory::create();
+
+        // create a new task
+        $task = Task::create(
+            [
+                'name' => $this->faker->realText(30, 1),
+                'description' => $this->faker->text,
+                'status' => 'BACKLOG',
+                'file_url' => $this->faker->url,
+            ]
+        );
+
+        // data to update
+        $payload = [
+            'status' => 'APPROVED',
+        ];
+
+        $this->patch("api/v1/tasks/$task->id/status", $payload)
+            ->assertStatus(Response::HTTP_BAD_REQUEST)
+            ->assertJsonStructure(
+                [
+                    'error',
+                    'message',
+                ]
+            );
+    }
+
+    /**
+     * Test error post route api
+     * Send duplicated tag
+     *
+     * @return void
+     */
+    public function testTaskTagIsCreatedErrorDuplicateTag()
+    {
+        $this->faker = Factory::create();
+
+        // create new task
+        $task = Task::create(
+            [
+                'name' => $this->faker->realText(30, 1),
+                'description' => $this->faker->text,
+                'status' => 'BACKLOG',
+                'file_url' => $this->faker->url,
+            ]
+        );
+
+        // create new tag
+        $tag = Tags::create(
+            [
+                'tag_name' => 'WARNING',
+                'task_id' => $task->id,
+            ]
+        );
+
+        // data to new tag
+        $payload = [
+            'tag_name' => $tag->tag_name,
+            'task_id' => $task->id,
+        ];
+
+        $this->post("api/v1/tasks/$task->id/tag", $payload)
+            ->assertStatus(Response::HTTP_BAD_REQUEST)
+            ->assertJsonStructure(
+                [
+                    'error',
+                    'message',
+                ]
+            );
+    }
+
+    /**
+     * Test error file_url route api
+     * Link don't allowed
+     *
+     * @return void
+     */
+    public function testTaskFileUrlIsShowForbidden()
+    {
+        $this->faker = Factory::create();
+
+        // create new task
+        $task = Task::create(
+            [
+                'name' => $this->faker->realText(30, 1),
+                'description' => $this->faker->text,
+                'status' => 'BACKLOG',
+                'file_url' => $this->faker->url,
+            ]
+        );
+
+        // get only file_url
+        $this->get("api/v1/tasks/$task->id/file_url")
+            ->assertStatus(Response::HTTP_FORBIDDEN)
+            ->assertJsonStructure(
+                [
+                    'error',
+                    'message',
+                ]
+            );
+    }
 }
