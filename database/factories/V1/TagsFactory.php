@@ -1,11 +1,11 @@
 <?php
 
-namespace Database\Factories;
+namespace Database\Factories\V1;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Tags>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\V1\Tags>
  */
 class TagsFactory extends Factory
 {
@@ -18,7 +18,7 @@ class TagsFactory extends Factory
     {
         return [
             'tag_name'=>$this->faker->realText(20,1),
-            'task_id'=>$this->faker->randomElement(\App\Models\Task::pluck('id')->toArray()),
+            'task_id'=>$this->faker->randomElement(\App\Models\V1\Task::pluck('id')->toArray()),
         ];
     }
 }
